@@ -30,7 +30,7 @@ A comprehensive tool for analyzing EHR data quality, detecting anomalies, and ge
 - **Error Detection Module**: AI-powered anomaly detection
 - **Reporting Module**: Comprehensive quality reports generation
 - 
-![Dashboard Screenshot](dashboard.png)
+![Dashboard Screenshot](Dashboard.png)
 
 ## Technology Stack
 
