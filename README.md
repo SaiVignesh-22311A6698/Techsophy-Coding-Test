@@ -63,7 +63,7 @@ Techsophy/
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
+git clone https://github.com/SaiVignesh-22311A6698/Techsophy-Coding-Test
 cd Techsophy
 ```
 
@@ -74,8 +74,11 @@ pip install -r requirements.txt
 python main.py
 ```
 
-3. **Open Frontend**
-- Open `frontend/index.html` in your browser (no build step required)
+3. **Open Frontend** Open New Terminal
+```bash
+cd frontend
+python -m http.server 3000
+```
 
 4. **Access the Application**
 - Frontend: http://localhost:3000 (if served)
