@@ -107,7 +107,5 @@ python main.py
 ## Example Data
 
 - Use the provided `data/sample_ehr_data_50.csv` for a realistic demo.
-
-## License
-
-MIT License - Feel free to use this project for educational and professional purposes. 
+## My Original Github
+- https://github.com/saivignesh-balne
