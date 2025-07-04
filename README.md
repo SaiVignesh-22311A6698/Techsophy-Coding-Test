@@ -29,6 +29,8 @@ A comprehensive tool for analyzing EHR data quality, detecting anomalies, and ge
 - **Validation Rules Engine**: Configurable validation framework
 - **Error Detection Module**: AI-powered anomaly detection
 - **Reporting Module**: Comprehensive quality reports generation
+- 
+![Dashboard Screenshot](dashboard.png)
 
 ## Technology Stack
 
