@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EHR Data Quality Auditor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.2s ease-in-out;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+        }
+        .info-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: middle;
+            margin-left: 0.3em;
+            cursor: pointer;
+            color: #6366f1;
+        }
+        .tooltip {
+            position: absolute;
+            z-index: 50;
+            background: #fff;
+            color: #222;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.5em 0.75em;
+            font-size: 0.85em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            white-space: pre-line;
+            min-width: 180px;
+            max-width: 320px;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">🏥 EHR Data Quality Auditor</h1>
+                    <p class="text-blue-100">AI-Powered Healthcare Data Analysis</p>
+                </div>
+                <div class="text-right">
+                    <div id="status" class="text-sm">
+                        <span class="bg-green-500 px-2 py-1 rounded-full">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Control Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Upload Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">📁 Upload Data</h2>
+                <form id="uploadForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Select EHR Data File
+                        </label>
+                        <input type="file" id="fileInput" accept=".csv,.json,.xlsx" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" 
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                        Upload & Analyze
+                    </button>
+                </form>
+            </div>
+
+            <!-- Sample Data Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">🧪 Sample Data</h2>
+                <p class="text-gray-600 mb-4">Test the system with generated sample EHR data</p>
+                <button id="analyzeSample" 
+                        class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors">
+                    Analyze Sample Data
+                </button>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">📊 Quick Stats</h2>
+                <div id="quickStats" class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Records:</span>
+                        <span id="recordCount" class="font-semibold">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Quality Score:</span>
+                        <span id="qualityScore" class="font-semibold">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Processing Time:</span>
+                        <span id="processingTime" class="font-semibold">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export PDF Button -->
+        <div class="flex justify-end mb-4">
+            <button id="exportPDF" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition-colors">Export as PDF</button>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden">
+            <!-- Quality Score Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">📈 Quality Assessment Results
+                    <span class="info-icon" tabindex="0" aria-label="Info">&#9432;</span>
+                    <span class="tooltip">This section summarizes the overall data quality, including completeness, consistency, and accuracy scores for your uploaded EHR dataset.</span>
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-600" id="overallScore">-</div>
+                        <div class="text-sm text-gray-600">Overall Score</div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600" id="completenessScore">-</div>
+                        <div class="text-sm text-gray-600">Completeness</div>
+                    </div>
+                    <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                        <div class="text-2xl font-bold text-yellow-600" id="consistencyScore">-</div>
+                        <div class="text-sm text-gray-600">Consistency</div>
+                    </div>
+                    <div class="text-center p-4 bg-purple-50 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-600" id="accuracyScore">-</div>
+                        <div class="text-sm text-gray-600">Accuracy</div>
+                    </div>
+                </div>
+                
+                <!-- Quality Chart -->
+                <div class="w-full h-64">
+                    <canvas id="qualityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Error Analysis -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">🚨 Error Analysis
+                        <span class="info-icon" tabindex="0" aria-label="Info">&#9432;</span>
+                        <span class="tooltip">Breakdown of detected data errors by severity. Click bars for details on affected records.</span>
+                    </h3>
+                    <div id="errorBreakdown" class="space-y-3">
+                        <!-- Error details will be populated here -->
+                    </div>
+                    <div class="mt-6">
+                        <canvas id="errorBarChart" height="120"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">🔍 Outlier Detection
+                        <span class="info-icon" tabindex="0" aria-label="Info">&#9432;</span>
+                        <span class="tooltip">Shows records with unusual or extreme values in clinical fields, detected using AI/ML methods.</span>
+                    </h3>
+                    <div id="outlierInfo" class="space-y-3">
+                        <!-- Outlier information will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">💡 Recommendations
+                    <span class="info-icon" tabindex="0" aria-label="Info">&#9432;</span>
+                    <span class="tooltip">AI-generated suggestions to improve your data quality and reduce errors or outliers.</span>
+                </h3>
+                <div id="recommendations" class="space-y-3">
+                    <!-- Recommendations will be populated here -->
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">🧬 Diagnosis Distribution
+                    <span class="info-icon" tabindex="0" aria-label="Info">&#9432;</span>
+                    <span class="tooltip">Visualizes the most common diagnoses in your dataset. Minor categories are grouped as 'Other'.</span>
+                </h3>
+                <div style="width:400px; height:400px; margin:auto;">
+                    <canvas id="diagnosisPieChart" width="400" height="400"></canvas>
+                  </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-700">Analyzing EHR data...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let qualityChart = null;
+        let errorBarChart = null;
+        let diagnosisPieChart = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            checkBackendStatus();
+            setupEventListeners();
+            document.querySelectorAll('.info-icon').forEach(function(icon) {
+                icon.addEventListener('mouseenter', function() {
+                    const tip = icon.nextElementSibling;
+                    tip.style.display = 'block';
+                    const rect = icon.getBoundingClientRect();
+                    tip.style.left = (rect.right + window.scrollX + 8) + 'px';
+                    tip.style.top = (rect.top + window.scrollY - 8) + 'px';
+                });
+                icon.addEventListener('mouseleave', function() {
+                    const tip = icon.nextElementSibling;
+                    tip.style.display = 'none';
+                });
+            });
+        });
+
+        function checkBackendStatus() {
+            fetch(`${API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status').innerHTML = 
+                        '<span class="bg-green-500 px-2 py-1 rounded-full">Connected</span>';
+                })
+                .catch(error => {
+                    document.getElementById('status').innerHTML = 
+                        '<span class="bg-red-500 px-2 py-1 rounded-full">Disconnected</span>';
+                });
+        }
+
+        function setupEventListeners() {
+            // File upload form
+            document.getElementById('uploadForm').addEventListener('submit', handleFileUpload);
+            
+            // Sample data analysis
+            document.getElementById('analyzeSample').addEventListener('click', analyzeSampleData);
+
+            // Export PDF button
+            document.getElementById('exportPDF').addEventListener('click', exportPDF);
+        }
+
+        function handleFileUpload(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file to upload');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showLoading();
+            
+            fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    displayResults(data);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Error uploading file: ' + error.message);
+            });
+        }
+
+        function analyzeSampleData() {
+            showLoading();
+            
+            fetch(`${API_BASE}/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    displayResults(data);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Error analyzing sample data: ' + error.message);
+            });
+        }
+
+        function displayResults(data) {
+            // Update quick stats
+            document.getElementById('recordCount').textContent = data.total_records || '-';
+            document.getElementById('qualityScore').textContent = 
+                data.overall_quality_score ? `${(data.overall_quality_score * 100).toFixed(1)}%` : '-';
+            document.getElementById('processingTime').textContent = 
+                data.processing_time ? `${data.processing_time.toFixed(2)}s` : '-';
+
+            // Update quality scores
+            document.getElementById('overallScore').textContent = 
+                data.overall_quality_score ? `${(data.overall_quality_score * 100).toFixed(1)}%` : '-';
+            document.getElementById('completenessScore').textContent = 
+                data.completeness?.overall_score ? `${(data.completeness.overall_score * 100).toFixed(1)}%` : '-';
+            document.getElementById('consistencyScore').textContent = 
+                data.consistency?.overall_score ? `${(data.consistency.overall_score * 100).toFixed(1)}%` : '-';
+            document.getElementById('accuracyScore').textContent = 
+                data.accuracy?.overall_score ? `${(data.accuracy.overall_score * 100).toFixed(1)}%` : '-';
+
+            // Create quality chart
+            createQualityChart(data);
+
+            // Update error breakdown
+            updateErrorBreakdown(data);
+
+            // Update outlier information
+            updateOutlierInfo(data);
+
+            // Update recommendations
+            updateRecommendations(data);
+
+            // Create error bar chart
+            createErrorBarChart(data);
+
+            // Create diagnosis pie chart
+            createDiagnosisPieChart(data);
+
+            // Show results section
+            document.getElementById('resultsSection').classList.remove('hidden');
+        }
+
+        function createQualityChart(data) {
+            const ctx = document.getElementById('qualityChart').getContext('2d');
+            
+            if (qualityChart) {
+                qualityChart.destroy();
+            }
+
+            qualityChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Completeness', 'Consistency', 'Accuracy', 'Timeliness'],
+                    datasets: [{
+                        label: 'Quality Scores',
+                        data: [
+                            data.completeness?.overall_score || 0,
+                            data.consistency?.overall_score || 0,
+                            data.accuracy?.overall_score || 0,
+                            data.timeliness?.overall_score || 0
+                        ],
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 1,
+                            ticks: {
+                                stepSize: 0.2,
+                                callback: function(value) {
+                                    return (value * 100).toFixed(0) + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateErrorBreakdown(data) {
+            const errorBreakdown = document.getElementById('errorBreakdown');
+            const errors = [];
+            
+            if (data.critical_errors > 0) errors.push(`Critical: ${data.critical_errors}`);
+            if (data.high_priority_errors > 0) errors.push(`High: ${data.high_priority_errors}`);
+            if (data.medium_priority_errors > 0) errors.push(`Medium: ${data.medium_priority_errors}`);
+            if (data.low_priority_errors > 0) errors.push(`Low: ${data.low_priority_errors}`);
+
+            if (errors.length === 0) {
+                errorBreakdown.innerHTML = '<p class="text-green-600">✅ No errors detected</p>';
+            } else {
+                errorBreakdown.innerHTML = errors.map(error => 
+                    `<div class="flex justify-between items-center p-2 bg-red-50 rounded">
+                        <span class="text-red-700">${error}</span>
+                    </div>`
+                ).join('');
+            }
+        }
+
+        function updateOutlierInfo(data) {
+            const outlierInfo = document.getElementById('outlierInfo');
+            const outlierAnalysis = data.outlier_analysis;
+            
+            if (outlierAnalysis && outlierAnalysis.total_outliers > 0) {
+                let tableRows = '';
+                if (outlierAnalysis.outlier_records && outlierAnalysis.outlier_records.length > 0) {
+                    tableRows = outlierAnalysis.outlier_records.map(record => {
+                        const pid = record.patient_id || '-';
+                        // Show all numeric fields for context
+                        const fields = [
+                            'blood_pressure_systolic',
+                            'blood_pressure_diastolic',
+                            'heart_rate',
+                            'temperature',
+                            'weight',
+                            'height'
+                        ];
+                        const cells = fields.map(f => `<td title="${f}">${record[f] !== undefined && record[f] !== null ? record[f] : '-'}</td>`).join('');
+                        return `<tr class="hover:bg-yellow-100"><td class="font-mono text-xs">${pid}</td>${cells}</tr>`;
+                    }).join('');
+                }
+                outlierInfo.innerHTML = `
+                    <div class="p-3 bg-yellow-50 rounded mb-2">
+                        <p class="text-yellow-800"><strong>${outlierAnalysis.total_outliers}</strong> outliers detected</p>
+                        <p class="text-sm text-yellow-600">${(outlierAnalysis.outlier_percentage * 100).toFixed(1)}% of records</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-xs border border-yellow-200 rounded">
+                            <thead class="bg-yellow-100">
+                                <tr>
+                                    <th class="px-2 py-1">Patient ID</th>
+                                    <th class="px-2 py-1">Systolic</th>
+                                    <th class="px-2 py-1">Diastolic</th>
+                                    <th class="px-2 py-1">Heart Rate</th>
+                                    <th class="px-2 py-1">Temp (°C)</th>
+                                    <th class="px-2 py-1">Weight (kg)</th>
+                                    <th class="px-2 py-1">Height (cm)</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                outlierInfo.innerHTML = '<p class="text-green-600">✅ No outliers detected</p>';
+            }
+        }
+
+        function updateRecommendations(data) {
+            const recommendations = document.getElementById('recommendations');
+            
+            if (data.recommendations && data.recommendations.length > 0) {
+                recommendations.innerHTML = data.recommendations.map(rec => 
+                    `<div class="p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                        <p class="text-blue-800">${rec}</p>
+                    </div>`
+                ).join('');
+            } else {
+                recommendations.innerHTML = '<p class="text-green-600">✅ No specific recommendations at this time</p>';
+            }
+        }
+
+        function createErrorBarChart(data) {
+            const ctx = document.getElementById('errorBarChart').getContext('2d');
+            if (errorBarChart) errorBarChart.destroy();
+            // Example: error counts by field and severity (simulate for now)
+            const fields = ['blood_pressure', 'heart_rate', 'temperature', 'weight', 'height'];
+            const severities = ['Critical', 'High', 'Medium', 'Low'];
+            // Simulate error data (replace with real data from backend if available)
+            const errorData = [
+                [1, 2, 3, 0], // blood_pressure
+                [0, 1, 2, 1], // heart_rate
+                [0, 0, 1, 2], // temperature
+                [0, 1, 0, 1], // weight
+                [0, 0, 1, 0]  // height
+            ];
+            errorBarChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: fields,
+                    datasets: severities.map((sev, i) => ({
+                        label: sev,
+                        data: errorData.map(row => row[i]),
+                        backgroundColor: [
+                            '#e11d48', '#f59e42', '#fbbf24', '#10b981'
+                        ][i],
+                        stack: 'Stack 0'
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    onClick: function(evt, elements) {
+                        if (elements.length > 0) {
+                            const field = fields[elements[0].index];
+                            // Show modal/table with affected records (implement modal logic)
+                            alert('Show details for field: ' + field);
+                        }
+                    },
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function createDiagnosisPieChart(data) {
+            const ctx = document.getElementById('diagnosisPieChart').getContext('2d');
+            if (diagnosisPieChart) diagnosisPieChart.destroy();
+            let topDiagnoses = {};
+            if (data.pattern_analysis && data.pattern_analysis.patterns_detected) {
+                data.pattern_analysis.patterns_detected.forEach(pat => {
+                    if (pat.startsWith('Top diagnoses:')) {
+                        try {
+                            topDiagnoses = JSON.parse(pat.replace('Top diagnoses:', '').replace(/'/g, '"'));
+                        } catch {}
+                    }
+                });
+            }
+            // Group minor diagnoses as 'Other'
+            const labels = Object.keys(topDiagnoses);
+            const values = Object.values(topDiagnoses);
+            let groupedLabels = [];
+            let groupedValues = [];
+            let otherCount = 0;
+            labels.forEach((label, i) => {
+                if (values[i] < Math.max(...values) * 0.15) {
+                    otherCount += values[i];
+                } else {
+                    groupedLabels.push(label);
+                    groupedValues.push(values[i]);
+                }
+            });
+            if (otherCount > 0) {
+                groupedLabels.push('Other');
+                groupedValues.push(otherCount);
+            }
+            diagnosisPieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: groupedLabels,
+                    datasets: [{
+                        data: groupedValues,
+                        backgroundColor: [
+                            '#2563eb', '#f59e42', '#10b981', '#e11d48', '#a855f7', '#fbbf24', '#6366f1', '#f43f5e', '#14b8a6', '#f472b6', '#facc15', '#818cf8', '#f87171', '#34d399', '#f472b6', '#a3e635', '#fcd34d', '#fca5a5', '#f9fafb', '#d1d5db'
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percent = ((value / total) * 100).toFixed(1);
+                                            return {
+                                                text: `${label} (${value}, ${percent}%)`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: data.datasets[0].borderColor,
+                                                lineWidth: 2,
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percent = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingSpinner').classList.add('hidden');
+        }
+
+        function exportPDF() {
+            // Load jsPDF from CDN if not already loaded
+            if (typeof window.jspdf === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = doExportPDF;
+                document.body.appendChild(script);
+            } else {
+                doExportPDF();
+            }
+        }
+
+        function doExportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            // Select the main content you want to export
+            const content = document.querySelector('main'); // or use document.body for the whole page
+
+            html2canvas(content, { scale: 2 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const imgWidth = pageWidth;
+                const imgHeight = canvas.height * pageWidth / canvas.width;
+
+                doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+                doc.save('ehr_quality_report.pdf');
+            });
+        }
+
+        // --- Download CSV Utility ---
+        function downloadCSV(filename, rows) {
+            const processValue = v => (v === null || v === undefined ? '' : (typeof v === 'object' ? JSON.stringify(v) : v));
+            const csv = [Object.keys(rows[0]).join(',')].concat(rows.map(row => Object.values(row).map(processValue).join(','))).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html> 
